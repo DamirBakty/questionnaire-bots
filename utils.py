@@ -21,9 +21,9 @@ def get_only_answer(answer):
     inside_parentheses = False
 
     for char in answer:
-        if char == '(':
+        if char == '(' or char == '[' or char == '{':
             inside_parentheses = True
-        elif char == ')':
+        elif char == ')' or char == ']' or char == '}':
             inside_parentheses = False
         elif not inside_parentheses:
             preprocessed_answer.append(char)
