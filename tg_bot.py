@@ -78,7 +78,7 @@ def keyboard_handler(update: Update, context: CallbackContext):
             return ConversationStates.ANSWER
 
         case 'Сдаться':
-            return ConversationStates.SURRENDER
+            return surrender(update, context)
 
         case 'Мой счет':
             return ConversationStates.KEYBOARD
@@ -94,7 +94,7 @@ def answer_to_question(update: Update, context: CallbackContext):
     user = update.effective_user
     message = update.message.text
     if message == 'Сдаться':
-        return ConversationStates.SURRENDER
+        return surrender(update, context)
 
     questionnaire = json.loads(r.get(user.id))
     answer = questionnaire['answer']

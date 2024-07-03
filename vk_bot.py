@@ -74,23 +74,26 @@ def command_handler(event, vk_api, keyboard):
                         keyboard=keyboard.get_keyboard()
                     )
                     return
-                old_questionnaire = json.loads(old_questionnaire)
-                right_answer = old_questionnaire['answer']
-                if check_answer(user_answer=message, right_answer=right_answer):
-                    vk_api.messages.send(
-                        user_id=event.user_id,
-                        message='Правильно! Поздравляю! Для следующего вопроса нажми «Новый вопрос»',
-                        random_id=random.randint(1, 1000),
-                        keyboard=keyboard.get_keyboard()
-                    )
-                    r.delete(event.user_id)
                 else:
-                    vk_api.messages.send(
-                        user_id=event.user_id,
-                        message='Неправильно… Попробуешь ещё раз?',
-                        random_id=random.randint(1, 1000),
-                        keyboard=keyboard.get_keyboard()
-                    )
+                    old_questionnaire = json.loads(old_questionnaire)
+                    right_answer = old_questionnaire['answer']
+                    if check_answer(user_answer=message, right_answer=right_answer):
+                        vk_api.messages.send(
+                            user_id=event.user_id,
+                            message='Правильно! Поздравляю! Для следующего вопроса нажми «Новый вопрос»',
+                            random_id=random.randint(1, 1000),
+                            keyboard=keyboard.get_keyboard()
+                        )
+                        r.delete(event.user_id)
+                        return
+                    else:
+                        vk_api.messages.send(
+                            user_id=event.user_id,
+                            message='Неправильно… Попробуешь ещё раз?',
+                            random_id=random.randint(1, 1000),
+                            keyboard=keyboard.get_keyboard()
+                        )
+                        return
 
 
 def main():
