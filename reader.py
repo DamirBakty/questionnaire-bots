@@ -29,7 +29,7 @@ def main():
 
     questions_dict = get_only_text(questionnaire)
 
-    with open('../bot-lesson-4/questions.json', 'w', encoding='utf-8') as f:
+    with open('questions.json', 'w', encoding='utf-8') as f:
         json.dump(questions_dict, f, ensure_ascii=False, indent=4)
 
 

@@ -13,6 +13,13 @@
 $ pip install -r requirements.txt
 ```
 
+## Вопросы
+Скачайте и ивлеките вопросы по [ссылке](https://dvmn.org/media/modules_dist/quiz-questions.zip)
+* Запустите скрипт для чтения и создания файлы базы вопросов
+
+```bash
+$ python reader.py
+```
 
 ## Установка Redis
 [Установите и запустите Redis](https://redis.io/docs/latest/operate/oss_and_stack/install/install-redis/), если этого ещё не сделали.
