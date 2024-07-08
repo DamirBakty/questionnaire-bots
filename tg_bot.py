@@ -1,27 +1,22 @@
 import json
 from enum import Enum
 
-import redis
 from environs import Env
 from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler, \
+    RegexHandler
 
-from utils import get_new_questionnaire, check_answer
-
-pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
-r = redis.Redis(connection_pool=pool)
+from question_helpers import get_new_questionnaire, check_answer
+from redis_connection import r
 
 
 class ConversationStates(Enum):
     ANSWER = 1
-    QUESTION = 2
-    KEYBOARD = 3
-    SURRENDER = 4
+    CHOOSE = 2
+    SURRENDER = 3
 
 
 def start(update: Update, context: CallbackContext):
-    user = update.effective_user
-
     custom_keyboard = [
         ['Новый вопрос', 'Сдаться'],
         ['Мой счет']
@@ -37,7 +32,7 @@ def start(update: Update, context: CallbackContext):
         text='Привет! я бот для викторин!',
         reply_markup=reply_markup
     )
-    return ConversationStates.KEYBOARD
+    return ConversationStates.CHOOSE
 
 
 def surrender(update: Update, context: CallbackContext):
@@ -47,7 +42,7 @@ def surrender(update: Update, context: CallbackContext):
         update.message.reply_text(
             'Вам еще не был задан вопрос'
         )
-        return ConversationStates.KEYBOARD
+        return ConversationStates.CHOOSE
 
     old_questionnaire = json.loads(old_questionnaire)
     answer = old_questionnaire['answer']
@@ -63,38 +58,21 @@ def surrender(update: Update, context: CallbackContext):
     return ConversationStates.ANSWER
 
 
-def keyboard_handler(update: Update, context: CallbackContext):
+def get_new_question(update: Update, context: CallbackContext):
     user = update.effective_user
-    message = update.message.text
-    match message:
-        case 'Новый вопрос':
-            questionnaire = get_new_questionnaire()
-            question = questionnaire['question']
-            update.message.reply_text(
-                question
-            )
-            question_json = json.dumps(questionnaire)
-            r.set(user.id, question_json)
-            return ConversationStates.ANSWER
-
-        case 'Сдаться':
-            return surrender(update, context)
-
-        case 'Мой счет':
-            return ConversationStates.KEYBOARD
-
-        case _:
-            update.message.reply_text(
-                'Я тебя не понимаю'
-            )
-            return ConversationStates.KEYBOARD
+    questionnaire = get_new_questionnaire()
+    question = questionnaire['question']
+    update.message.reply_text(
+        question
+    )
+    question_json = json.dumps(questionnaire)
+    r.set(user.id, question_json)
+    return ConversationStates.ANSWER
 
 
 def answer_to_question(update: Update, context: CallbackContext):
     user = update.effective_user
     message = update.message.text
-    if message == 'Сдаться':
-        return surrender(update, context)
 
     questionnaire = json.loads(r.get(user.id))
     answer = questionnaire['answer']
@@ -109,7 +87,7 @@ def answer_to_question(update: Update, context: CallbackContext):
             'Правильно! Поздравляю! Для следующего вопроса нажми «Новый вопрос»'
         )
         r.delete(user.id)
-        return ConversationStates.KEYBOARD
+        return ConversationStates.CHOOSE
 
     else:
         update.message.reply_text(
@@ -131,9 +109,17 @@ def main() -> None:
         entry_points=[CommandHandler('start', start)],
 
         states={
-            ConversationStates.KEYBOARD: [MessageHandler(Filters.text, keyboard_handler)],
-            ConversationStates.ANSWER: [MessageHandler(Filters.text, answer_to_question)],
-            ConversationStates.SURRENDER: [MessageHandler(Filters.text, surrender)],
+            ConversationStates.CHOOSE: [
+                RegexHandler('^Новый вопрос$', get_new_question)
+            ],
+
+            ConversationStates.SURRENDER: [
+                RegexHandler('^Сдаться$', surrender)
+            ],
+
+            ConversationStates.ANSWER: [
+                MessageHandler(Filters.text, answer_to_question)
+            ],
         },
         fallbacks=[CommandHandler('start', start)],
     )
