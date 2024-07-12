@@ -7,7 +7,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
     RegexHandler
 
 from question_helpers import get_new_questionnaire, check_answer
-from redis_connection import r
+from redis_connection import get_redis_connection
 
 
 class ConversationStates(Enum):
@@ -37,6 +37,8 @@ def start(update: Update, context: CallbackContext):
 
 def surrender(update: Update, context: CallbackContext):
     user = update.effective_user
+    r = context.bot_data.get('redis_connection')
+
     old_questionnaire = r.get(user.id)
     if not old_questionnaire:
         update.message.reply_text(
@@ -61,6 +63,7 @@ def surrender(update: Update, context: CallbackContext):
 def get_new_question(update: Update, context: CallbackContext):
     user = update.effective_user
     questionnaire = get_new_questionnaire()
+    r = context.bot_data.get('redis_connection')
     question = questionnaire['question']
     update.message.reply_text(
         question
@@ -73,6 +76,7 @@ def get_new_question(update: Update, context: CallbackContext):
 def answer_to_question(update: Update, context: CallbackContext):
     user = update.effective_user
     message = update.message.text
+    r = context.bot_data.get('redis_connection')
 
     questionnaire = json.loads(r.get(user.id))
     answer = questionnaire['answer']
@@ -93,28 +97,33 @@ def answer_to_question(update: Update, context: CallbackContext):
         update.message.reply_text(
             'Неправильно… Попробуешь ещё раз?'
         )
-
-    return ConversationStates.ANSWER
+        return ConversationStates.ANSWER
 
 
 def main() -> None:
     env = Env()
     env.read_env()
     tg_bot_token = env.str('TG_BOT_TOKEN')
+    redis_host = env.str("REDIS_HOST", 'localhost')
+    redis_port = env.int("REDIS_PORT", '6379')
+    redis_db = env.int("REDIS_DB", '0')
+
+    r = get_redis_connection(redis_host, redis_port, redis_db)
     updater = Updater(tg_bot_token)
 
     dispatcher = updater.dispatcher
+    dispatcher.bot_data['redis_connection'] = r
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
 
         states={
             ConversationStates.CHOOSE: [
-                RegexHandler('^Новый вопрос$', get_new_question)
+                MessageHandler(Filters.regex('^Новый вопрос$'), get_new_question)
             ],
 
             ConversationStates.SURRENDER: [
-                RegexHandler('^Сдаться$', surrender)
+                MessageHandler(Filters.regex('^Сдаться$'), surrender)
             ],
 
             ConversationStates.ANSWER: [

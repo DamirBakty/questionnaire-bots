@@ -7,10 +7,10 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.longpoll import VkLongPoll, VkEventType
 
 from question_helpers import get_new_questionnaire, check_answer
-from redis_connection import r
+from redis_connection import get_redis_connection
 
 
-def command_handler(event, vk_api, keyboard):
+def command_handler(event, vk_api, keyboard, r):
     message = event.text
     if event.type == VkEventType.MESSAGE_NEW and event.to_me:
         if message == 'Новый вопрос':
@@ -96,6 +96,11 @@ def main():
     env = Env()
     env.read_env()
     vk_bot_token = env.str('VK_BOT_TOKEN')
+    redis_host = env.str("REDIS_HOST", 'localhost')
+    redis_port = env.int("REDIS_PORT", '6379')
+    redis_db = env.int("REDIS_DB", '0')
+
+    r = get_redis_connection(redis_host, redis_port, redis_db)
 
     vk_session = vk.VkApi(token=vk_bot_token)
     vk_api = vk_session.get_api()
@@ -110,7 +115,7 @@ def main():
     longpoll = VkLongPoll(vk_session)
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-            command_handler(event, vk_api, keyboard)
+            command_handler(event, vk_api, keyboard, r)
 
 
 if __name__ == '__main__':
